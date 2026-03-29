@@ -1,0 +1,2 @@
+node_modules
+.next .env .env.local .env.staging *.log tsconfig.tsbuildinfo .next-stale-*/ .data/
