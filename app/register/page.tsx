@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthRateLimitNotice } from "@/components/auth/AuthRateLimitNotice";
 import { RegisterForm } from "@/components/auth/RegisterForm";
 
 export default function RegisterPage({
@@ -7,6 +8,7 @@ export default function RegisterPage({
   searchParams?: { error?: string };
 }) {
   const error = searchParams?.error ?? "";
+  const rateLimited = error === "rate_limited";
 
   return (
     <div className="page-rhythm">
@@ -22,6 +24,7 @@ export default function RegisterPage({
                   Create your client credentials, verify your email, and move into the portal with a real account instead of a shared password.
                 </p>
               </div>
+              <AuthRateLimitNotice show={rateLimited} />
               <RegisterForm error={error} />
             </div>
           </section>

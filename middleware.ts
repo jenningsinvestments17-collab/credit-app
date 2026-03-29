@@ -2,15 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
 import { getEdgeClientIp, readEdgeSessionCookie } from "@/lib/security/edgeRequest";
 
-const GLOBAL_LIMIT = { limit: 120, windowMs: 15 * 60 * 1000, label: "requests" };
 const AUTH_LIMIT = { limit: 5, windowMs: 15 * 60 * 1000, label: "authentication" };
+const API_LIMIT = { limit: 50, windowMs: 60 * 1000, label: "api" };
 const AUTH_PATHS = new Set([
-  "/login",
-  "/admin/login",
-  "/register",
-  "/forgot-password",
-  "/reset-password",
-  "/verify-email",
   "/api/auth/login",
   "/api/auth/admin/login",
   "/api/auth/register",
@@ -18,7 +12,21 @@ const AUTH_PATHS = new Set([
   "/api/auth/password-reset/confirm",
   "/api/auth/verify-email",
 ]);
+const SENSITIVE_API_PATHS = new Set([
+  "/api/reports/upload",
+  "/api/mailing/send",
+  "/api/admin/notifications/reminder",
+]);
+const SENSITIVE_API_PREFIXES = ["/api/disputes/"];
 const CLIENT_PROTECTED_PATHS = ["/dashboard", "/dashboard/contracts", "/intake"];
+const AUTH_REDIRECTS: Record<string, string> = {
+  "/api/auth/login": "/login",
+  "/api/auth/admin/login": "/admin/login",
+  "/api/auth/register": "/register",
+  "/api/auth/password-reset/request": "/forgot-password",
+  "/api/auth/password-reset/confirm": "/reset-password",
+  "/api/auth/verify-email": "/verify-email",
+};
 
 function isStaticAsset(pathname: string) {
   return (
@@ -32,40 +40,61 @@ function isStaticAsset(pathname: string) {
   );
 }
 
-async function checkGlobalRateLimit(request: NextRequest, input: {
+async function checkAuthRateLimit(request: NextRequest, input: {
   key: string;
   limit: number;
   windowMs: number;
   label: string;
 }) {
-  const origin = request.nextUrl.origin;
-  const response = await fetch(`${origin}/api/internal/rate-limit`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-internal-rate-limit": env.APP_SESSION_SECRET,
-    },
-    body: JSON.stringify(input),
-    cache: "no-store",
-  });
-
-  const data = await response.json().catch(() => null);
-
-  if (!response.ok) {
+  const secret = process.env.APP_SESSION_SECRET?.trim();
+  if (!secret) {
     return {
-      limited: true,
-      retryAfter: Number(data?.retryAfter ?? 60),
-      remaining: 0,
-      resetAt: Date.now() + 60_000,
+      limited: false,
+      retryAfter: 0,
+      remaining: input.limit,
+      resetAt: Date.now() + input.windowMs,
     };
   }
 
-  return {
-    limited: Boolean(data?.limited),
-    retryAfter: Number(data?.retryAfter ?? 0),
-    remaining: Number(data?.remaining ?? 0),
-    resetAt: Number(data?.resetAt ?? Date.now()),
-  };
+  const origin = request.nextUrl.origin;
+  try {
+    const response = await fetch(`${origin}/api/internal/rate-limit`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-internal-rate-limit": secret,
+      },
+      body: JSON.stringify(input),
+      cache: "no-store",
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      return {
+        limited: false,
+        retryAfter: 0,
+        remaining: input.limit,
+        resetAt: Date.now() + input.windowMs,
+      };
+    }
+
+    return {
+      limited: Boolean(data?.limited),
+      retryAfter: Number(data?.retryAfter ?? 0),
+      remaining: Number(data?.remaining ?? input.limit),
+      resetAt: Number(data?.resetAt ?? Date.now()),
+    };
+  } catch {
+    // Fail open here so a missing or unhealthy Redis-backed limiter never takes down page loads.
+    // Sensitive auth routes still have route-level protection in the auth handlers.
+    return {
+      limited: false,
+      retryAfter: 0,
+      remaining: input.limit,
+      resetAt: Date.now() + input.windowMs,
+    };
+  }
 }
 
 function applySecurityHeaders(response: NextResponse, request: NextRequest) {
@@ -104,37 +133,83 @@ function applySecurityHeaders(response: NextResponse, request: NextRequest) {
   return response;
 }
 
+function expectsJsonResponse(request: NextRequest) {
+  const accept = request.headers.get("accept")?.toLowerCase() ?? "";
+  const requestedWith = request.headers.get("x-requested-with")?.toLowerCase() ?? "";
+  const contentType = request.headers.get("content-type")?.toLowerCase() ?? "";
+
+  if (requestedWith === "xmlhttprequest") {
+    return true;
+  }
+
+  if (contentType.includes("application/json")) {
+    return true;
+  }
+
+  return accept.includes("application/json") && !accept.includes("text/html");
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const isApi = pathname.startsWith("/api/");
+  const isProtectedPage =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/intake") ||
+    pathname.startsWith("/admin");
+
+  if (!isApi && !isProtectedPage) {
+    return NextResponse.next();
+  }
 
   if (isStaticAsset(pathname)) {
     return NextResponse.next();
   }
 
-  const ip = getEdgeClientIp(request.headers, env.TRUST_PROXY);
   const isAuthRoute = AUTH_PATHS.has(pathname);
-  const limit = isAuthRoute ? AUTH_LIMIT : GLOBAL_LIMIT;
-  const rateResult = await checkGlobalRateLimit(request, {
-    key: `${limit.label}:${ip}:${pathname}`,
-    limit: limit.limit,
-    windowMs: limit.windowMs,
-    label: limit.label,
-  });
+  const isSensitiveApiRoute =
+    SENSITIVE_API_PATHS.has(pathname) ||
+    SENSITIVE_API_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  let rateResult = {
+    limited: false,
+    retryAfter: 0,
+    remaining: API_LIMIT.limit,
+    resetAt: Date.now() + API_LIMIT.windowMs,
+  };
 
-  if (rateResult.limited) {
-    return NextResponse.json(
-      {
-        error: "Too many requests.",
-        code: "rate_limited",
-        message: `Too many ${limit.label} attempts. Please wait and try again.`,
-      },
-      {
-        status: 429,
-        headers: {
-          "Retry-After": String(rateResult.retryAfter || 60),
+  if (isAuthRoute || isSensitiveApiRoute) {
+    const ip = getEdgeClientIp(request.headers, env.TRUST_PROXY);
+    const appliedLimit = isAuthRoute ? AUTH_LIMIT : API_LIMIT;
+    rateResult = await checkAuthRateLimit(request, {
+      key: `${appliedLimit.label}:${ip}:${pathname}`,
+      limit: appliedLimit.limit,
+      windowMs: appliedLimit.windowMs,
+      label: appliedLimit.label,
+    });
+
+    if (rateResult.limited) {
+      if (isAuthRoute && !expectsJsonResponse(request)) {
+        const redirectPath = AUTH_REDIRECTS[pathname] ?? "/login";
+        const url = new URL(redirectPath, request.url);
+        url.searchParams.set("error", "rate_limited");
+        return NextResponse.redirect(url, 303);
+      }
+
+      return NextResponse.json(
+        {
+          error: "Too many requests.",
+          code: "rate_limited",
+          message: isAuthRoute
+            ? "Too many authentication attempts. Please wait and try again."
+            : "Too many API requests. Please wait and try again.",
         },
-      },
-    );
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(rateResult.retryAfter || 60),
+          },
+        },
+      );
+    }
   }
 
   const authPayload = readEdgeSessionCookie(
@@ -158,12 +233,20 @@ export async function middleware(request: NextRequest) {
   }
 
   const response = NextResponse.next();
-  response.headers.set("X-RateLimit-Limit", String(limit.limit));
+  response.headers.set(
+    "X-RateLimit-Limit",
+    String(isAuthRoute ? AUTH_LIMIT.limit : isSensitiveApiRoute ? API_LIMIT.limit : API_LIMIT.limit),
+  );
   response.headers.set("X-RateLimit-Remaining", String(rateResult.remaining));
   response.headers.set("X-RateLimit-Reset", String(rateResult.resetAt));
   return applySecurityHeaders(response, request);
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/dashboard/:path*",
+    "/intake/:path*",
+    "/admin/:path*",
+    "/api/:path*",
+  ],
 };

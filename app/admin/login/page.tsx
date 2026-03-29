@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthRateLimitNotice } from "@/components/auth/AuthRateLimitNotice";
 import { AdminLoginForm } from "@/components/auth/AdminLoginForm";
 import { SupportBlock } from "@/components/ui/SupportBlock";
 
@@ -9,6 +10,7 @@ export default function AdminLoginPage({
 }) {
   const email = searchParams?.email ?? "";
   const hasError = searchParams?.error === "1";
+  const rateLimited = searchParams?.error === "rate_limited";
   const next = searchParams?.next ?? "/admin";
 
   return (
@@ -29,6 +31,7 @@ export default function AdminLoginPage({
               </div>
 
               <AdminLoginForm email={email} hasError={hasError} next={next} />
+              <AuthRateLimitNotice show={rateLimited} />
 
               <p className="text-sm leading-7 text-zinc-500">
                 Admin access uses the bootstrap super admin or invited admin accounts backed by the new auth database layer.

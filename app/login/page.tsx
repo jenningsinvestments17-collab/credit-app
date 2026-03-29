@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthRateLimitNotice } from "@/components/auth/AuthRateLimitNotice";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { SupportBlock } from "@/components/ui/SupportBlock";
 
@@ -9,6 +10,7 @@ export default function LoginPage({
 }) {
   const email = searchParams?.email ?? "";
   const hasError = searchParams?.error === "1";
+  const rateLimited = searchParams?.error === "rate_limited";
   const next = searchParams?.next ?? "";
 
   return (
@@ -31,6 +33,7 @@ export default function LoginPage({
               </div>
 
               <LoginForm email={email} hasError={hasError} next={next} />
+              <AuthRateLimitNotice show={rateLimited} />
 
               {searchParams?.reset === "1" ? (
                 <div className="rounded-[1rem] border border-emerald-400/20 bg-emerald-500/10 px-4 py-4 text-sm leading-7 text-emerald-700">

@@ -1,11 +1,14 @@
 import Link from "next/link";
+import { AuthRateLimitNotice } from "@/components/auth/AuthRateLimitNotice";
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 
 export default function ForgotPasswordPage({
   searchParams,
 }: {
-  searchParams?: { sent?: string; token?: string };
+  searchParams?: { sent?: string; token?: string; error?: string };
 }) {
+  const rateLimited = searchParams?.error === "rate_limited";
+
   return (
     <div className="page-rhythm">
       <section className="page-shell-light relative overflow-hidden">
@@ -20,6 +23,7 @@ export default function ForgotPasswordPage({
                   Enter your email and we will issue a secure reset link if the account exists.
                 </p>
               </div>
+              <AuthRateLimitNotice show={rateLimited} />
               <ForgotPasswordForm
                 sent={searchParams?.sent === "1"}
                 tokenPreview={searchParams?.token ?? ""}

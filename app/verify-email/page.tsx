@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthRateLimitNotice } from "@/components/auth/AuthRateLimitNotice";
 import { verifyEmailAction } from "@/lib/auth";
 
 export default async function VerifyEmailPage({
@@ -9,6 +10,7 @@ export default async function VerifyEmailPage({
   const verified =
     searchParams?.verified === "1" ||
     (searchParams?.token ? await verifyEmailAction(searchParams.token) : false);
+  const rateLimited = searchParams?.error === "rate_limited";
 
   return (
     <div className="page-rhythm">
@@ -32,6 +34,7 @@ export default async function VerifyEmailPage({
                       : "Use the verification link from your email to activate your account."}
                 </p>
               </div>
+              <AuthRateLimitNotice show={rateLimited} />
               <Link
                 href="/login"
                 className="inline-flex min-h-12 items-center justify-center rounded-[0.95rem] border border-accent/70 bg-accent px-5 text-sm font-semibold uppercase tracking-[0.08em] text-black shadow-glow transition-all duration-200 hover:-translate-y-0.5 hover:border-accent-soft hover:bg-accent-soft"

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthRateLimitNotice } from "@/components/auth/AuthRateLimitNotice";
 import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm";
 
 export default function ResetPasswordPage({
@@ -7,6 +8,7 @@ export default function ResetPasswordPage({
   searchParams?: { token?: string; error?: string };
 }) {
   const token = searchParams?.token ?? "";
+  const rateLimited = searchParams?.error === "rate_limited";
 
   return (
     <div className="page-rhythm">
@@ -19,6 +21,7 @@ export default function ResetPasswordPage({
                 <p className="eyebrow">Reset password</p>
                 <h1 className="display-title-lg text-text-dark">Set a new password.</h1>
               </div>
+              <AuthRateLimitNotice show={rateLimited} />
               <ResetPasswordForm token={token} hasError={searchParams?.error === "1"} />
             </div>
           </section>
