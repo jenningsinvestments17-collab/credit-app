@@ -1,0 +1,78 @@
+
+> credu-consulting-next@0.1.0 dev
+> next dev --port 3001
+
+  ▲ Next.js 14.2.28
+  - Local:        http://localhost:3001
+
+ ✓ Starting...
+ ✓ Ready in 2.1s
+ ○ Compiling /admin ...
+ ✓ Compiled /admin in 6.9s (566 modules)
+ GET /admin 200 in 7073ms
+ GET /_next/static/webpack/7263b89891473daf.webpack.hot-update.json 404 in 7133ms
+ GET /_next/static/webpack/7263b89891473daf.webpack.hot-update.json 404 in 54ms
+ GET /_next/static/webpack/7263b89891473daf.webpack.hot-update.json 404 in 68ms
+ GET /admin 200 in 143ms
+ ○ Compiling / ...
+ ✓ Compiled / in 540ms (541 modules)
+ GET /admin 200 in 501ms
+ GET / 200 in 569ms
+ GET /_next/static/webpack/7263b89891473daf.webpack.hot-update.json 404 in 362ms
+ GET /admin 200 in 117ms
+ GET /_next/static/webpack/7263b89891473daf.webpack.hot-update.json 404 in 103ms
+ GET / 200 in 145ms
+ GET /video/hero-poster.jpg 404 in 33ms
+ GET /video/hero-poster-mobile.jpg 404 in 42ms
+ GET /admin 200 in 131ms
+ GET /admin 307 in 53ms
+ GET / 200 in 53ms
+ ✓ Compiled /admin/login in 259ms (544 modules)
+ GET /admin/login?next=/admin 200 in 388ms
+ ✓ Compiled in 282ms (294 modules)
+ ✓ Compiled in 326ms (552 modules)
+ ✓ Compiled in 203ms (258 modules)
+ ○ Compiling /_error ...
+ GET / 500 in 55ms
+ GET /admin 500 in 49ms
+ GET /admin 500 in 69ms
+ ✓ Compiled /_not-found in 916ms (774 modules)
+ GET /_next/static/webpack/3342d1b41561619e.webpack.hot-update.json 404 in 1114ms
+ GET /_next/static/webpack/3342d1b41561619e.webpack.hot-update.json 404 in 87ms
+ GET /_next/static/webpack/3342d1b41561619e.webpack.hot-update.json 404 in 46ms
+ GET /video/hero-poster.jpg 404 in 87ms
+ GET /video/hero-poster-mobile.jpg 404 in 61ms
+ GET / 200 in 401ms
+ GET /admin 200 in 317ms
+ GET /admin 200 in 265ms
+ ✓ Compiled in 565ms (788 modules)
+ GET /_next/static/css/app/layout.css?v=1774496261981 500 in 237ms
+ GET /_next/static/css/app/layout.css?v=1774496262398 500 in 238ms
+ GET /_next/static/css/app/layout.css?v=1774496269975 500 in 13ms
+ GET /_next/static/css/app/layout.css?v=1774496270406 500 in 9ms
+ GET /_next/static/css/app/layout.css?v=1774496277986 500 in 8ms
+ GET /_next/static/css/app/layout.css?v=1774496278402 500 in 10ms
+ GET /_next/static/css/app/layout.css?v=1774496285989 500 in 7ms
+ GET /_next/static/css/app/layout.css?v=1774496286405 500 in 9ms
+ GET / 200 in 75ms
+ GET /admin 307 in 159ms
+ ✓ Compiled /admin/login in 204ms (342 modules)
+ GET /admin/login?next=/admin 500 in 263ms
+ GET / 500 in 41ms
+ GET /admin 500 in 48ms
+ GET /_next/static/chunks/fallback/webpack.js 500 in 42ms
+ GET /_next/static/chunks/fallback/react-refresh.js 500 in 39ms
+ GET /_next/static/chunks/fallback/main.js 500 in 39ms
+ GET /_next/static/chunks/fallback/pages/_error.js 500 in 32ms
+ GET /_next/static/chunks/fallback/pages/_app.js 500 in 28ms
+ GET /admin 500 in 78ms
+ GET /_next/static/chunks/fallback/react-refresh.js 500 in 49ms
+ GET /_next/static/chunks/fallback/webpack.js 500 in 48ms
+ GET /_next/static/chunks/fallback/main.js 500 in 48ms
+ GET /_next/static/chunks/fallback/pages/_error.js 500 in 24ms
+ GET /_next/static/chunks/fallback/pages/_app.js 500 in 22ms
+ GET /_next/static/chunks/fallback/react-refresh.js 500 in 26ms
+ GET /_next/static/chunks/fallback/webpack.js 500 in 24ms
+ GET /_next/static/chunks/fallback/main.js 500 in 23ms
+ GET /_next/static/chunks/fallback/pages/_app.js 500 in 11ms
+ GET /_next/static/chunks/fallback/pages/_error.js 500 in 9ms

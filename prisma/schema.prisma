@@ -1,0 +1,380 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserType {
+  client
+  admin
+}
+
+enum SessionStatus {
+  active
+  revoked
+  expired
+}
+
+enum RoleCode {
+  client
+  admin
+  super_admin
+}
+
+enum AnalyticsEventType {
+  intake_started
+  account_created
+  documents_uploaded
+  ai_generated
+  dispute_approved
+  payment_completed
+  mail_sent
+}
+
+enum DashboardPaymentStatus {
+  payment_required
+  authorized
+  authorization_expired
+  payment_failed
+  captured
+}
+
+enum FunnelStage {
+  account_created
+  intake_started
+  documents_uploaded
+  ai_generated
+  dispute_approved
+  payment_completed
+  mail_sent
+}
+
+model User {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email            String           @unique @db.Citext
+  emailVerifiedAt  DateTime?        @map("email_verified_at") @db.Timestamptz(6)
+  firstName        String           @map("first_name")
+  lastName         String           @map("last_name")
+  phone            String?
+  userType         UserType         @map("user_type")
+  status           String           @default("active")
+  funnelStage      FunnelStage?     @map("funnel_stage")
+  funnelUpdatedAt  DateTime?        @map("funnel_updated_at") @db.Timestamptz(6)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt        DateTime?        @map("deleted_at") @db.Timestamptz(6)
+  credential       UserCredential?
+  sessions         Session[]
+  roles            UserRole[]
+  analyticsEvents  AnalyticsEvent[]
+  violationLogs    ViolationLog[]
+  dashboardPayments DashboardPayment[]
+  intakeForm       IntakeForm?
+
+  @@index([userType, status], map: "idx_users_type_status")
+  @@index([userType, deletedAt, createdAt], map: "idx_users_type_deleted_created_at")
+  @@index([funnelStage], map: "idx_users_funnel_stage")
+  @@map("users")
+}
+
+model UserCredential {
+  id                           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                       String    @unique @map("user_id") @db.Uuid
+  passwordHash                 String    @map("password_hash")
+  passwordAlgo                 String    @default("scrypt") @map("password_algo")
+  passwordUpdatedAt            DateTime  @default(now()) @map("password_updated_at") @db.Timestamptz(6)
+  failedLoginCount             Int       @default(0) @map("failed_login_count")
+  lockedUntil                  DateTime? @map("locked_until") @db.Timestamptz(6)
+  emailVerificationTokenHash   String?   @map("email_verification_token_hash")
+  emailVerificationExpiresAt   DateTime? @map("email_verification_expires_at") @db.Timestamptz(6)
+  passwordResetTokenHash       String?   @map("password_reset_token_hash")
+  passwordResetExpiresAt       DateTime? @map("password_reset_expires_at") @db.Timestamptz(6)
+  passwordResetRequestedAt     DateTime? @map("password_reset_requested_at") @db.Timestamptz(6)
+  createdAt                    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user                         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([lockedUntil], map: "idx_user_credentials_locked_until")
+  @@index([passwordResetExpiresAt], map: "idx_user_credentials_password_reset_expires_at")
+  @@index([emailVerificationExpiresAt], map: "idx_user_credentials_email_verification_expires_at")
+  @@map("user_credentials")
+}
+
+model Session {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String        @map("user_id") @db.Uuid
+  sessionTokenHash String        @unique @map("session_token_hash")
+  csrfSecretHash   String?       @map("csrf_secret_hash")
+  ipAddress        String?       @map("ip_address") @db.Inet
+  userAgent        String?       @map("user_agent")
+  status           SessionStatus @default(active)
+  lastSeenAt       DateTime      @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  expiresAt        DateTime      @map("expires_at") @db.Timestamptz(6)
+  revokedAt        DateTime?     @map("revoked_at") @db.Timestamptz(6)
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status], map: "idx_sessions_user_status")
+  @@index([userId, createdAt], map: "idx_sessions_user_created_at")
+  @@index([expiresAt], map: "idx_sessions_expires_at")
+  @@map("sessions")
+}
+
+model Role {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code      RoleCode   @unique
+  name      String
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  users     UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  userId       String   @map("user_id") @db.Uuid
+  roleId       String   @map("role_id") @db.Uuid
+  assignedById String?  @map("assigned_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId], map: "idx_user_roles_role_id")
+  @@map("user_roles")
+}
+
+model AnalyticsEvent {
+  id        String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String             @map("user_id") @db.Uuid
+  eventType AnalyticsEventType @map("event_type")
+  metadata  Json               @default("{}")
+  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt], map: "idx_analytics_events_user_created_at")
+  @@index([eventType, createdAt], map: "idx_analytics_events_type_created_at")
+  @@index([userId, eventType, createdAt], map: "idx_analytics_events_user_event_created_at")
+  @@map("analytics_events")
+}
+
+model ViolationLog {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String?  @map("user_id") @db.Uuid
+  leadId          String   @map("lead_id")
+  disputeId       String?  @map("dispute_id")
+  disputeVersionId String? @map("dispute_version_id")
+  bureau          String?
+  violationType   String   @map("violation_type")
+  law             String
+  score           Int
+  confidence      Decimal  @db.Decimal(5, 2)
+  strategy        String
+  resultVersion   Int      @default(1) @map("result_version")
+  accountKey      String   @map("account_key")
+  accountName     String   @map("account_name")
+  metadata        Json     @default("{}")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user            User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([leadId, createdAt], map: "idx_violation_logs_lead_created_at")
+  @@index([disputeId, createdAt], map: "idx_violation_logs_dispute_created_at")
+  @@index([violationType, createdAt], map: "idx_violation_logs_type_created_at")
+  @@map("violation_logs")
+}
+
+model DefectCodeCatalog {
+  code              String   @id
+  title             String
+  category          String
+  severity          String
+  laws              String[]
+  description       String
+  consumerHarm      String   @map("consumer_harm")
+  disputeGoal       String   @map("dispute_goal")
+  suggestedTone     String   @map("suggested_tone")
+  strategyLevel     String   @map("strategy_level")
+  outputTemplateKey String   @map("output_template_key")
+  escalationReady   Boolean  @default(false) @map("escalation_ready")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("defect_code_catalog")
+}
+
+model DisputeDefectFinding {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  disputeVersionId String? @map("dispute_version_id")
+  leadId          String   @map("lead_id")
+  bureau          String
+  accountKey      String   @map("account_key")
+  accountName     String   @map("account_name")
+  accountLast4    String   @map("account_last4")
+  defectCode      String   @map("defect_code")
+  confidence      Decimal  @db.Decimal(5, 2)
+  score           Int
+  supportingFacts String[] @map("supporting_facts")
+  metadata        Json     @default("{}")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([disputeVersionId, createdAt], map: "idx_dispute_defect_findings_version_created_at")
+  @@index([leadId, createdAt], map: "idx_dispute_defect_findings_lead_created_at")
+  @@index([defectCode, createdAt], map: "idx_dispute_defect_findings_code_created_at")
+  @@map("dispute_defect_findings")
+}
+
+model DisputeScore {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  disputeVersionId String?  @map("dispute_version_id")
+  leadId           String   @map("lead_id")
+  version          Int
+  totalScore       Int      @map("total_score")
+  highSeverityCount Int     @map("high_severity_count")
+  criticalCount    Int      @map("critical_count")
+  classification   String
+  metadata         Json     @default("{}")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([disputeVersionId, createdAt], map: "idx_dispute_scores_version_created_at")
+  @@index([leadId, createdAt], map: "idx_dispute_scores_lead_created_at")
+  @@index([classification, createdAt], map: "idx_dispute_scores_classification_created_at")
+  @@map("dispute_scores")
+}
+
+model EscalationFlag {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  disputeVersionId  String?  @map("dispute_version_id")
+  leadId            String   @map("lead_id")
+  tier              String
+  flagType          String   @map("flag_type")
+  title             String
+  reason            String
+  weight            Int
+  tone              String
+  includeStatutes   Boolean  @default(false) @map("include_statutes")
+  claimPreservation Boolean  @default(false) @map("claim_preservation")
+  metadata          Json     @default("{}")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([disputeVersionId, createdAt], map: "idx_escalation_flags_version_created_at")
+  @@index([leadId, createdAt], map: "idx_escalation_flags_lead_created_at")
+  @@index([tier, createdAt], map: "idx_escalation_flags_tier_created_at")
+  @@index([flagType, createdAt], map: "idx_escalation_flags_type_created_at")
+  @@map("escalation_flags")
+}
+
+model EscalationHistory {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  disputeId        String   @map("dispute_id")
+  disputeVersionId String?  @map("dispute_version_id")
+  leadId           String   @map("lead_id")
+  fromStage        String?  @map("from_stage")
+  toStage          String   @map("to_stage")
+  actorType        String   @map("actor_type")
+  actorId          String   @map("actor_id")
+  reason           String
+  overrideApplied  Boolean  @default(false) @map("override_applied")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([disputeId, createdAt], map: "idx_escalation_history_dispute_created_at")
+  @@index([leadId, createdAt], map: "idx_escalation_history_lead_created_at")
+  @@index([toStage, createdAt], map: "idx_escalation_history_stage_created_at")
+  @@map("escalation_history")
+}
+
+model ClaimPacket {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  disputeId          String   @map("dispute_id")
+  disputeVersionId   String?  @map("dispute_version_id")
+  leadId             String   @map("lead_id")
+  stage              String
+  caseSummary        String   @map("case_summary")
+  violationSummary   String   @map("violation_summary")
+  timeline           Json     @default("[]")
+  evidenceList       Json     @map("evidence_list") @default("[]")
+  neutralLegalMapping Json    @map("neutral_legal_mapping") @default("[]")
+  requestedOutcome   String   @map("requested_outcome")
+  escalationLetter   String   @map("escalation_letter")
+  claimPacketText    String   @map("claim_packet_text")
+  claimPacketPdfPath String?  @map("claim_packet_pdf_path")
+  exportBundlePath   String?  @map("export_bundle_path")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([disputeId, createdAt], map: "idx_claim_packets_dispute_created_at")
+  @@index([leadId, createdAt], map: "idx_claim_packets_lead_created_at")
+  @@index([stage, createdAt], map: "idx_claim_packets_stage_created_at")
+  @@map("claim_packets")
+}
+
+model DashboardPayment {
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId               String?                @map("user_id") @db.Uuid
+  leadId               String                 @map("lead_id")
+  disputeId            String                 @unique @map("dispute_id")
+  amountCents          Int                    @map("amount_cents")
+  currency             String
+  status               DashboardPaymentStatus
+  requestedAt          DateTime               @map("requested_at") @db.Timestamptz(6)
+  authorizedAt         DateTime?              @map("authorized_at") @db.Timestamptz(6)
+  capturedAt           DateTime?              @map("captured_at") @db.Timestamptz(6)
+  serviceRenderedAt    DateTime?              @map("service_rendered_at") @db.Timestamptz(6)
+  lastFailureReason    String?                @map("last_failure_reason")
+  checkoutSessionId    String?                @map("checkout_session_id")
+  paymentIntentId      String?                @map("payment_intent_id")
+  metadata             Json                   @default("{}")
+  createdAt            DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user                 User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, requestedAt], map: "idx_dashboard_payments_status_requested_at")
+  @@index([capturedAt], map: "idx_dashboard_payments_captured_at")
+  @@index([userId, status], map: "idx_dashboard_payments_user_status")
+  @@map("dashboard_payments")
+}
+
+model IntakeForm {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String   @unique @map("user_id") @db.Uuid
+  currentStep           String   @default("profile") @map("current_step")
+  profileData           Json     @default("{}") @map("profile_data")
+  disclosuresAcceptedAt DateTime? @map("disclosures_accepted_at") @db.Timestamptz(6)
+  contractsAcceptedAt   DateTime? @map("contracts_accepted_at") @db.Timestamptz(6)
+  reviewCompletedAt     DateTime? @map("review_completed_at") @db.Timestamptz(6)
+  lastSavedAt           DateTime? @map("last_saved_at") @db.Timestamptz(6)
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([currentStep, updatedAt], map: "idx_intake_forms_current_step_updated_at")
+  @@map("intake_forms")
+}
+
+model WebhookEvent {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider       String
+  eventId        String?  @unique @map("event_id")
+  eventType      String   @map("event_type")
+  disputeId      String?  @map("dispute_id")
+  leadId         String?  @map("lead_id")
+  status         String   @default("received")
+  signatureValid Boolean  @default(false) @map("signature_valid")
+  attempts       Int      @default(0)
+  payload        Json     @default("{}")
+  errorMessage   String?  @map("error_message")
+  receivedAt     DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+  processedAt    DateTime? @map("processed_at") @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([provider, receivedAt], map: "idx_webhook_events_provider_received_at")
+  @@index([status, receivedAt], map: "idx_webhook_events_status_received_at")
+  @@index([disputeId, receivedAt], map: "idx_webhook_events_dispute_received_at")
+  @@map("webhook_events")
+}

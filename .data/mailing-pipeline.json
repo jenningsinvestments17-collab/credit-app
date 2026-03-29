@@ -1,0 +1,140 @@
+{
+  "disputes": [
+    {
+      "id": "dispute_lead_004",
+      "leadId": "lead_004",
+      "bureau": "Experian",
+      "currentVersionId": "dispver_lead_004_1",
+      "workflowStatus": "awaiting_admin_approval",
+      "createdAt": "2026-03-25T13:10:00.000Z",
+      "updatedAt": "2026-03-24T10:45:00.000Z"
+    },
+    {
+      "id": "dispute_lead_005",
+      "leadId": "lead_005",
+      "bureau": "Experian",
+      "currentVersionId": "dispver_lead_005_1",
+      "workflowStatus": "tracking_pending",
+      "approvedAt": "2026-03-24T13:30:00.000Z",
+      "approvedBy": "Admin reviewer",
+      "paidAt": "2026-03-24T13:40:00.000Z",
+      "readyToSendAt": "2026-03-24T13:42:00.000Z",
+      "sentToProviderAt": "2026-03-24T14:00:00.000Z",
+      "createdAt": "2026-03-24T13:00:00.000Z",
+      "updatedAt": "2026-03-24T11:10:00.000Z"
+    }
+  ],
+  "disputeVersions": [
+    {
+      "id": "dispver_lead_004_1",
+      "disputeId": "dispute_lead_004",
+      "versionNumber": 1,
+      "kind": "ai_draft",
+      "letterText": "Date: March 25, 2026\n\nTo: Experian\n\nRe: Request for Reinvestigation\n\nI am writing to dispute information appearing in my credit file that I believe may be inaccurate, incomplete, inconsistent, or unverifiable. Please review the item below and reinvestigate it.\n\n- Atlas Auto Finance (1842): Balance and payment history appear inconsistent and should be reinvestigated.\n\nPlease send me an updated copy of my credit report after your reinvestigation is complete.\n\nSincerely,\nJasmine Carter",
+      "summary": "Draft dispute prepared from uploaded bureau reports, normalized findings, and the stored dispute template.",
+      "findings": [
+        {
+          "bureau": "Experian",
+          "accountName": "Atlas Auto Finance",
+          "accountLast4": "1842",
+          "defectCode": "balance_payment_inconsistency",
+          "reason": "Balances, payment history, or status fields appear internally inconsistent."
+        }
+      ],
+      "generatedBy": "ai",
+      "createdAt": "2026-03-25T13:10:00.000Z",
+      "notes": [
+        "Draft reviewed for tone, recipient, and issue framing.",
+        "Still waiting on final mailing approval."
+      ]
+    },
+    {
+      "id": "dispver_lead_005_1",
+      "disputeId": "dispute_lead_005",
+      "versionNumber": 1,
+      "kind": "mailing_final",
+      "letterText": "Date: March 24, 2026\n\nTo: Experian\n\nRe: Final approved dispute mailing copy\n\nThis is the approved mailing version of the dispute letter prepared after AI review and admin edits.\n\nSincerely,\nAndre Walker",
+      "summary": "Final dispute letter was reviewed, approved, and moved into the certified mail workflow.",
+      "findings": [
+        {
+          "bureau": "Experian",
+          "accountName": "Atlas Auto Finance",
+          "accountLast4": "1842",
+          "defectCode": "balance_payment_inconsistency",
+          "reason": "Balances, payment history, or status fields appear internally inconsistent."
+        }
+      ],
+      "generatedBy": "admin",
+      "createdAt": "2026-03-24T13:00:00.000Z",
+      "approvedAt": "2026-03-24T13:30:00.000Z",
+      "pdfAssetPath": "/generated/dispver_lead_005_1.pdf",
+      "pdfGeneratedAt": "2026-03-24T13:35:00.000Z",
+      "notes": [
+        "Minor edits applied before mailing approval.",
+        "Approved for certified mail on March 24, 2026."
+      ]
+    }
+  ],
+  "mailingJobs": [
+    {
+      "id": "mailjob_lead_005",
+      "disputeId": "dispute_lead_005",
+      "leadId": "lead_005",
+      "bureau": "Experian",
+      "workflowStatus": "tracking_pending",
+      "providerStatus": "tracking_received",
+      "queuedAt": "2026-03-24T13:45:00.000Z",
+      "sentToProviderAt": "2026-03-24T14:00:00.000Z",
+      "trackingNumber": "70151230000123456789",
+      "proofOfMailingPath": "Proof placeholder saved to future document store.",
+      "deliveryStatus": "in_transit",
+      "createdAt": "2026-03-24T13:45:00.000Z",
+      "updatedAt": "2026-03-24T11:10:00.000Z"
+    }
+  ],
+  "mailingEvents": [
+    {
+      "id": "event_lead_005_approved",
+      "disputeId": "dispute_lead_005",
+      "mailingJobId": "mailjob_lead_005",
+      "eventType": "approved",
+      "occurredAt": "2026-03-24T13:30:00.000Z",
+      "actor": "Admin reviewer",
+      "notes": "Dispute approved for mailing."
+    },
+    {
+      "id": "event_lead_005_payment",
+      "disputeId": "dispute_lead_005",
+      "mailingJobId": "mailjob_lead_005",
+      "eventType": "payment_confirmed",
+      "occurredAt": "2026-03-24T13:39:00.000Z",
+      "actor": "Stripe webhook",
+      "notes": "Payment confirmed for mailing workflow."
+    },
+    {
+      "id": "event_lead_005_sent",
+      "disputeId": "dispute_lead_005",
+      "mailingJobId": "mailjob_lead_005",
+      "eventType": "sent_to_provider",
+      "occurredAt": "2026-03-24T14:00:00.000Z",
+      "actor": "Certified mail provider",
+      "notes": "Mailing job accepted by provider."
+    }
+  ],
+  "paymentRecords": [
+    {
+      "id": "payment_lead_005",
+      "disputeId": "dispute_lead_005",
+      "leadId": "lead_005",
+      "amountCents": 40500,
+      "currency": "usd",
+      "status": "paid",
+      "stripePaymentIntentId": "pi_lead_005",
+      "stripeCheckoutSessionId": "cs_lead_005",
+      "requestedAt": "2026-03-24T13:32:00.000Z",
+      "confirmedAt": "2026-03-24T13:39:00.000Z",
+      "createdAt": "2026-03-24T13:32:00.000Z",
+      "updatedAt": "2026-03-24T13:39:00.000Z"
+    }
+  ]
+}
